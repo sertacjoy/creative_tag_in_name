@@ -2,10 +2,14 @@
   "name": "react-typescript",
   "version": "1.0.0",
   "description": "React and TypeScript example starter project",
-  "keywords": ["typescript", "react", "starter"],
+  "keywords": [
+    "typescript",
+    "react",
+    "starter"
+  ],
   "main": "src/index.tsx",
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.8",
+    "@supabase/supabase-js": "^2.102.1",
     "loader-utils": "3.2.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
