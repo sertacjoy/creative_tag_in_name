@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { supabase } from "./supabase";
 import React, { useMemo, useState, useEffect } from "react";
 
 const defaultConfig = {
@@ -108,25 +109,8 @@ const cleanId = (text) =>
     .toLowerCase();
 
 export default function App() {
-  const [config, setConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem("creative_naming_config");
-      return saved ? JSON.parse(saved) : defaultConfig;
-    } catch (e) {
-      console.error("load error", e);
-      return defaultConfig;
-    }
-  });
-
-  const [selectedGameId, setSelectedGameId] = useState(() => {
-    try {
-      const saved = localStorage.getItem("creative_selected_game_id");
-      return saved || defaultConfig.games[0].id;
-    } catch (e) {
-      return defaultConfig.games[0].id;
-    }
-  });
-
+  const [config, setConfig] = useState(defaultConfig);
+  const [selectedGameId, setSelectedGameId] = useState(defaultConfig.games[0].id);
   const [values, setValues] = useState({});
   const [customValues, setCustomValues] = useState({});
   const [copied, setCopied] = useState(false);
@@ -138,21 +122,70 @@ export default function App() {
   const [optionDrafts, setOptionDrafts] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("creative_naming_config", JSON.stringify(config));
-    } catch (e) {
-      console.error("save error", e);
-    }
-  }, [config]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Shared config'i Supabase'den yükle
   useEffect(() => {
-    try {
-      localStorage.setItem("creative_selected_game_id", selectedGameId);
-    } catch (e) {
-      console.error("selected game save error", e);
-    }
-  }, [selectedGameId]);
+    const loadConfig = async () => {
+      const { data, error } = await supabase
+        .from("app_config")
+        .select("config_json")
+        .eq("id", "main")
+        .single();
+
+      if (error) {
+        console.error("load config error", error);
+        setIsLoaded(true);
+        return;
+      }
+
+      if (data?.config_json) {
+        setConfig(data.config_json);
+
+        if (data.config_json.games?.length > 0) {
+          setSelectedGameId(data.config_json.games[0].id);
+        }
+      }
+
+      setIsLoaded(true);
+    };
+
+    loadConfig();
+  }, []);
+
+  // Config değişince Supabase'e kaydet
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const saveConfig = async () => {
+      setIsSaving(true);
+
+      const { error } = await supabase
+        .from("app_config")
+        .update({
+          config_json: config,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", "main");
+
+      if (error) {
+        console.error("save error", error);
+        setSaveMessage("Save hatası");
+      } else {
+        setSaveMessage("Shared kaydedildi");
+      }
+
+      setIsSaving(false);
+      setTimeout(() => setSaveMessage(""), 1200);
+    };
+
+    const timer = setTimeout(() => {
+      saveConfig();
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [config, isLoaded]);
 
   const selectedGame = useMemo(() => {
     const found = config.games.find((g) => g.id === selectedGameId);
@@ -342,29 +375,23 @@ export default function App() {
     try {
       const text = JSON.stringify(config, null, 2);
       await navigator.clipboard.writeText(text);
-      alert("Config JSON kopyalandı. Bunu saklayıp tekrar kullanabilirsin.");
+      alert("Config JSON kopyalandı.");
     } catch (e) {
       console.error(e);
     }
   };
 
-  const resetSavedData = () => {
-    try {
-      localStorage.removeItem("creative_naming_config");
-      localStorage.removeItem("creative_selected_game_id");
-      setConfig(defaultConfig);
-      setSelectedGameId(defaultConfig.games[0].id);
-      setValues({});
-      setCustomValues({});
-      setNewGameName("");
-      setNewGameCode("");
-      setNewFieldLabel("");
-      setNewFieldOptions("");
-      setOptionDrafts({});
-      flashSaved("Kayıt sıfırlandı");
-    } catch (e) {
-      console.error(e);
-    }
+  const resetSharedData = () => {
+    setConfig(defaultConfig);
+    setSelectedGameId(defaultConfig.games[0].id);
+    setValues({});
+    setCustomValues({});
+    setNewGameName("");
+    setNewGameCode("");
+    setNewFieldLabel("");
+    setNewFieldOptions("");
+    setOptionDrafts({});
+    flashSaved("Shared config sıfırlandı");
   };
 
   const flashSaved = (text) => {
@@ -372,13 +399,25 @@ export default function App() {
     setTimeout(() => setSaveMessage(""), 1200);
   };
 
+  if (!isLoaded) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Yükleniyor...</h2>
+            <p style={styles.subtitle}>Shared config Supabase'den çekiliyor.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.page}>
       <div style={styles.container}>
         <h1 style={styles.title}>Creative Naming System Builder</h1>
         <p style={styles.subtitle}>
-          Oyun ekle, oyun kodunu değiştir, tag türlerini düzenle, seçenekleri
-          güncelle. Autosave açık. Yaptığın değişiklikler tarayıcıda saklanır.
+          Shared config açık. Herkes aynı oyunları ve tagleri görür.
         </p>
 
         <div style={styles.layout}>
@@ -587,13 +626,14 @@ export default function App() {
                 </button>
                 <button
                   style={styles.dangerButtonSmall}
-                  onClick={resetSavedData}
+                  onClick={resetSharedData}
                 >
-                  Kayıtları Sıfırla
+                  Shared Sıfırla
                 </button>
               </div>
 
               {saveMessage && <div style={styles.saveBadge}>{saveMessage}</div>}
+              {isSaving && <div style={styles.saveBadge}>Kaydediliyor...</div>}
             </section>
 
             <section style={styles.card}>
