@@ -90,16 +90,16 @@ const defaultConfig = {
   ],
 };
 
-const uid = () => Math.random().toString(36).slice(2, 10);
+const uid = (): string => Math.random().toString(36).slice(2, 10);
 
-const cleanCode = (text) =>
+const cleanCode = (text: string): string =>
   text
     .trim()
     .replace(/\s+/g, "_")
     .replace(/[^A-Za-z0-9_]/g, "")
     .toUpperCase();
 
-const cleanId = (text) =>
+const cleanId = (text: string): string =>
   text
     .trim()
     .replace(/\s+/g, "_")
@@ -126,15 +126,15 @@ export default function App() {
     }
   });
 
-  const [values, setValues] = useState({});
-  const [customValues, setCustomValues] = useState({});
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
 
   const [newGameName, setNewGameName] = useState("");
   const [newGameCode, setNewGameCode] = useState("");
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldOptions, setNewFieldOptions] = useState("");
-  const [optionDrafts, setOptionDrafts] = useState({});
+  const [optionDrafts, setOptionDrafts] = useState<Record<string, string>>({});
   const [saveMessage, setSaveMessage] = useState("");
 
   useEffect(() => {
@@ -177,7 +177,9 @@ export default function App() {
     return parts.join("_");
   }, [selectedGame, values, customValues]);
 
-  const updateSelectedGame = (updater) => {
+  const updateSelectedGame = (
+    updater: (game: (typeof defaultConfig.games)[number]) => (typeof defaultConfig.games)[number]
+  ) => {
     setConfig((prev) => ({
       ...prev,
       games: prev.games.map((game) =>
@@ -186,7 +188,7 @@ export default function App() {
     }));
   };
 
-  const handleGameMetaChange = (field, value) => {
+  const handleGameMetaChange = (field: "name" | "code", value: string) => {
     updateSelectedGame((game) => ({
       ...game,
       [field]: field === "code" ? cleanCode(value) : value,
@@ -248,7 +250,7 @@ export default function App() {
     flashSaved("Tag türü eklendi");
   };
 
-  const updateFieldLabel = (fieldId, value) => {
+  const updateFieldLabel = (fieldId: string, value: string) => {
     updateSelectedGame((game) => ({
       ...game,
       fields: game.fields.map((field) =>
@@ -257,7 +259,7 @@ export default function App() {
     }));
   };
 
-  const moveField = (fieldId, direction) => {
+  const moveField = (fieldId: string, direction: "up" | "down") => {
     updateSelectedGame((game) => {
       const index = game.fields.findIndex((f) => f.id === fieldId);
       if (index === -1) return game;
@@ -271,7 +273,7 @@ export default function App() {
     });
   };
 
-  const deleteField = (fieldId) => {
+  const deleteField = (fieldId: string) => {
     updateSelectedGame((game) => ({
       ...game,
       fields: game.fields.filter((f) => f.id !== fieldId),
@@ -292,7 +294,7 @@ export default function App() {
     flashSaved("Tag silindi");
   };
 
-  const addOption = (fieldId) => {
+  const addOption = (fieldId: string) => {
     const option = cleanCode(optionDrafts[fieldId] || "");
     if (!option) return;
 
@@ -309,7 +311,7 @@ export default function App() {
     flashSaved("Seçenek eklendi");
   };
 
-  const deleteOption = (fieldId, option) => {
+  const deleteOption = (fieldId: string, option: string) => {
     updateSelectedGame((game) => ({
       ...game,
       fields: game.fields.map((field) =>
@@ -366,7 +368,7 @@ export default function App() {
     }
   };
 
-  const flashSaved = (text) => {
+  const flashSaved = (text: string) => {
     setSaveMessage(text);
     setTimeout(() => setSaveMessage(""), 1200);
   };
